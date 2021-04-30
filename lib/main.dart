@@ -1,12 +1,20 @@
-import 'dart:async';
-import 'dart:html';
+
 import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 
 final authRepository = AuthRepository();
 
 void main() {
-  runApp(MyApp());
+  runApp(
+      MultiProvider(
+        child: MyApp(),
+        providers: [
+          ChangeNotifierProvider.value(
+            value: AuthRepository(),
+          ),
+        ],
+      ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -35,7 +43,9 @@ class LoginPage extends StatelessWidget {
         child: ElevatedButton(
           child: Text('로그인'),
           onPressed: (){
-            authRepository.setAuthStatus(AuthState.Authenticated);
+            print('login');
+            Provider.of<AuthRepository>(context, listen: false)
+                .setState(AuthState.Authenticated);
           },
         ),
       ),
@@ -54,7 +64,9 @@ class MainPage extends StatelessWidget {
         child: ElevatedButton(
           child: Text('로그 아웃'),
           onPressed: (){
-            authRepository.setAuthStatus(AuthState.Authenticated);
+            print('logout');
+            Provider.of<AuthRepository>(context, listen: false)
+                .setState(AuthState.UnAuthenticated);
           },
         ),
       ),
@@ -62,20 +74,14 @@ class MainPage extends StatelessWidget {
   }
 }
 
-enum AuthState {
-  Authenticated, UnAuthenticated,
-}
+enum AuthState {Authenticated, UnAuthenticated,}
 
-class AuthRepository {
-  AuthState auth = AuthState.UnAuthenticated;
+class AuthRepository with ChangeNotifier{
+  AuthState authState = AuthState.UnAuthenticated;
 
-  final StreamController _streamController = StreamController<AuthState>()
-    ..add(AuthState.UnAuthenticated);
-
-  get authStream => _streamController.stream;
-
-  setAuthStatus(AuthState state) {
-    _streamController.add(state);
+  setState(AuthState state){
+    authState = state;
+    notifyListeners();
   }
 }
 
@@ -83,15 +89,9 @@ class RootPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder(
-      stream: authRepository.authStream,
-      builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
-        if (snapshot.data == AuthState.UnAuthenticated){
-          return LoginPage();
-        }
-        return MainPage();
-      },
-    );
+    AuthState authState = Provider.of<AuthRepository>(context).authState;
+
+    return authState == AuthState.UnAuthenticated ? LoginPage() : MainPage();
   }
 }
 
